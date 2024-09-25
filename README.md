@@ -12,15 +12,16 @@ The User Management Service is a FastAPI-based microservice designed to handle u
 
 ## Technologies
 - Python 3.11.3
-- FastAPI
+- FastAPI 0.115.0
 - SQLAlchemy
-- Pydantic
+- Pydantic 2.9.2
 - PyJWT
 
 ## Setup
 1. Ensure you have Python 3.11.3 installed. If using pyenv:
    ```
    pyenv install 3.11.3
+   pyenv local 3.11.3
    ```
 
 2. Clone the repository:
@@ -31,8 +32,8 @@ The User Management Service is a FastAPI-based microservice designed to handle u
 
 3. Create and activate a virtual environment:
    ```
-   pyenv virtualenv 3.11.3 user-management-env
-   pyenv local user-management-env
+   python -m venv user-management-env
+   source user-management-env/bin/activate  # On Windows, use `user-management-env\Scripts\activate`
    ```
 
 4. Install dependencies:
@@ -61,6 +62,21 @@ The API will be available at `http://localhost:8000`. You can access the interac
 - `/groups`: Group management
 
 For detailed API documentation, refer to the Swagger UI available at `/docs` when the service is running.
+
+## Development
+We use several tools to maintain code quality:
+
+- Black for code formatting
+- Flake8 for linting
+- Mypy for static type checking
+- Pytest for testing
+
+To run all checks, use the `lint.sh` script:
+```
+./lint.sh
+```
+
+Run this script before committing changes to ensure code quality.
 
 ## Testing
 To run the test suite:
