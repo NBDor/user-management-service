@@ -1,28 +1,26 @@
 from fastapi import FastAPI
-from typing import Dict, Optional
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.routing import APIRoute
+from app.api.v1.endpoints import users
+from app.core.config import settings
 
-app = FastAPI(title="User Management Service")
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+app = FastAPI(
+    title=settings.PROJECT_NAME or "User Management Service",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
 )
+
+app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
 
 
 @app.get("/")
-def read_root() -> Dict[str, str]:
-    return {"Hello": "World"}
+def read_root() -> dict:
+    return {"message": "Welcome to the User Management Service"}
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Optional[str] = None) -> Dict[str, Optional[str | int]]:
-    return {"item_id": item_id, "q": q}
-
+# Add this debugging code
+print("Registered routes:")
+for route in app.routes:
+    if isinstance(route, APIRoute):
+        print(f"Route: {route.path}, Methods: {route.methods}")
 
 if __name__ == "__main__":
     import uvicorn

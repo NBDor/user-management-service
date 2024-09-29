@@ -15,5 +15,9 @@ extend-exclude = '''
   | dist
 )/
 '''
-[tool.pytest]
+
+[tool.pytest.ini_options]
 pythonpath = "."
+filterwarnings = [
+    "ignore:.*crypt.*:DeprecationWarning"
+]
