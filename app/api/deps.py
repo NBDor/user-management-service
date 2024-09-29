@@ -12,16 +12,17 @@ from app.models.user import User
 from app.schemas.token import TokenPayload
 from app.core import security
 from app.core.config import settings
-from app.db.session import SessionLocal
+from app.db.db_utils import DatabaseConnectionPool
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
 )
 
 
-def get_db() -> Generator:
+def get_db() -> Generator[Session, None, None]:
+    db_pool = DatabaseConnectionPool()
+    db = db_pool.get_session()
     try:
-        db = SessionLocal()
         yield db
     finally:
         db.close()
