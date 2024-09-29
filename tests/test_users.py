@@ -15,7 +15,7 @@ class TestUsers:
         user_in = UserCreate(email=email, password=password)
         user = user_crud.create(db_session, obj_in=user_in)
         assert user.email == email
-        assert hasattr(user, "hashed_password")
+        assert hasattr(user, "password")
 
     def test_get_user(self, db_session: Session) -> None:
         password = random_lower_string()

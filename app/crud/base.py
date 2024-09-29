@@ -1,5 +1,4 @@
-from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union, Sequence
-from fastapi.encoders import jsonable_encoder
+from typing import Any, Generic, Optional, Type, TypeVar, Sequence
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -30,8 +29,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db.execute(select(self.model).offset(skip).limit(limit)).scalars().all()
 
     def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
-        obj_in_data = jsonable_encoder(obj_in)
-        db_obj = self.model(**obj_in_data)
+        create_data = obj_in.model_dump()
+        db_obj = self.model(**create_data)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
@@ -42,16 +41,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db: Session,
         *,
         db_obj: ModelType,
-        obj_in: Union[UpdateSchemaType, Dict[str, Any]],
+        obj_in: UpdateSchemaType,
     ) -> ModelType:
-        obj_data = jsonable_encoder(db_obj)
-        if isinstance(obj_in, dict):
-            update_data = obj_in
-        else:
-            update_data = obj_in.dict(exclude_unset=True)
-        for field in obj_data:
-            if field in update_data:
-                setattr(db_obj, field, update_data[field])
+        update_data = obj_in.model_dump(exclude_unset=True)
+        for field in update_data:
+            setattr(db_obj, field, update_data[field])
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)

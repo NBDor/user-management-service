@@ -1,24 +1,47 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from app.core.security import get_password_hash
 from typing import Optional
 
 
 class UserBase(BaseModel):
-    email: Optional[EmailStr] = None
-    is_active: Optional[bool] = True
+    email: EmailStr
+    is_active: bool = True
     is_superuser: bool = False
 
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=8)
+    is_active: bool = True
+    is_superuser: bool = False
+
+    @field_validator("password")
+    def hash_password(cls, v: str) -> str:
+        return get_password_hash(v)
 
 
-class UserUpdate(UserBase):
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
     password: Optional[str] = None
 
+    @field_validator("password")
+    def hash_password(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            return get_password_hash(v)
+        return v
 
-class User(UserBase):
+
+class UserInDBBase(UserBase):
     id: int
 
+    model_config = {"from_attributes": True}
 
-model_config = ConfigDict(from_attributes=True)
+
+class User(UserInDBBase):
+    pass
+
+
+class UserInDB(UserInDBBase):
+    password: str
