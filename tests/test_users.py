@@ -119,13 +119,14 @@ def test_get_users(client: TestClient, test_user: Tuple[User, str]) -> None:
     assert len(response.json()) > 0
 
 
-def test_get_users_with_filter_params(client: TestClient, test_user: Tuple[User, str]) -> None:
+def test_get_users_with_filter_params(
+    client: TestClient, test_user: Tuple[User, str]
+) -> None:
     """Test retrieving users with filter parameters."""
-    filter_params = UserFilterParams(
-        is_active=True,
-        is_superuser=False
-    ).model_dump(exclude_none=True)
-    
+    filter_params = UserFilterParams(is_active=True, is_superuser=False).model_dump(
+        exclude_none=True
+    )
+
     query_params = "&".join(f"{k}={v}" for k, v in filter_params.items())
     response = client.get(f"{settings.API_V1_STR}/users/?{query_params}")
     assert response.status_code == 200
