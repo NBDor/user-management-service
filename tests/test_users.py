@@ -6,7 +6,7 @@ from typing import Tuple
 from app.core.config import settings
 from app.crud.user import user as user_crud
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
+from app.schemas.user import UserCreate, UserUpdate, UserFilterParams
 from tests.utils.utils import random_email, random_lower_string
 
 
@@ -41,7 +41,7 @@ def test_get_user(db_session: Session, test_user: Tuple[User, str]) -> None:
 def test_get_user_by_email(db_session: Session, test_user: Tuple[User, str]) -> None:
     """Test retrieving a user by email."""
     user, _ = test_user
-    user_2 = user_crud.get_by_email(db_session, email=user.email)
+    user_2 = user_crud.get_by_filter(db_session, filter_params={"email": user.email})
     assert user_2
     assert user.id == user_2.id
 
@@ -75,7 +75,7 @@ def test_create_user_api(client: TestClient, db_session: Session) -> None:
     response = client.post(f"{settings.API_V1_STR}/users/", json=data)
     assert response.status_code == 201, response.text
     created_user = response.json()
-    user = user_crud.get_by_email(db_session, email=email)
+    user = user_crud.get_by_filter(db_session, filter_params={"email": email})
     assert user
     assert user.email == created_user["email"]
 
@@ -117,6 +117,18 @@ def test_get_users(client: TestClient, test_user: Tuple[User, str]) -> None:
     response = client.get(f"{settings.API_V1_STR}/users/")
     assert response.status_code == 200
     assert len(response.json()) > 0
+
+
+def test_get_users_with_filter_params(client: TestClient, test_user: Tuple[User, str]) -> None:
+    """Test retrieving users with filter parameters."""
+    filter_params = UserFilterParams(
+        is_active=True,
+        is_superuser=False
+    ).model_dump(exclude_none=True)
+    
+    query_params = "&".join(f"{k}={v}" for k, v in filter_params.items())
+    response = client.get(f"{settings.API_V1_STR}/users/?{query_params}")
+    assert response.status_code == 200
 
 
 def test_get_user_by_id_api(client: TestClient, test_user: Tuple[User, str]) -> None:

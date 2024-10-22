@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from app.core.security import get_password_hash
 from typing import Optional
 
@@ -45,3 +45,13 @@ class User(UserInDBBase):
 
 class UserInDB(UserInDBBase):
     password: str
+
+
+class UserFilterParams(BaseModel):
+    """Schema for user filtering parameters"""
+
+    is_active: Optional[bool] = None
+    is_superuser: Optional[bool] = None
+    email: Optional[EmailStr] = None
+
+    model_config = ConfigDict(from_attributes=True)

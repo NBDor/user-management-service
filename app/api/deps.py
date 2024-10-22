@@ -1,4 +1,4 @@
-from typing import Generator, cast
+from typing import Generator
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.crud.user import user as user_crud
-from app.crud.user import CRUDUser
 from app.models.user import User
 from app.schemas.token import TokenPayload
 from app.core import security
@@ -41,16 +40,16 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
         )
-    user = cast(CRUDUser, user_crud).get(db, id=token_data.sub)
+    user = user_crud.get(db, id=token_data.sub)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
-    return cast(User, user)
+    return user
 
 
 def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    if not cast(CRUDUser, user_crud).is_active(current_user):
+    if not user_crud.is_active(current_user):
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
@@ -58,7 +57,7 @@ def get_current_active_user(
 def get_current_active_superuser(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    if not cast(CRUDUser, user_crud).is_superuser(current_user):
+    if not user_crud.is_superuser(current_user):
         raise HTTPException(
             status_code=400, detail="The user doesn't have enough privileges"
         )

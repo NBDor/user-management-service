@@ -1,15 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.orm import Session
-from typing import Any, List
+from typing import Any, Sequence, Optional
 
 from app.crud.user import user as user_crud
-from app.schemas.user import User, UserCreate, UserUpdate
+from app.schemas.user import UserCreate, UserUpdate, UserFilterParams
+from app.schemas.user import User as user_schema
+from app.models.user import User as user_model
 from app.api import deps
 
 router = APIRouter()
 
 
-@router.post("/", response_model=User, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=user_schema, status_code=status.HTTP_201_CREATED)
 def create_user(
     *,
     db: Session = Depends(deps.get_db),
@@ -18,7 +20,7 @@ def create_user(
     """
     Create new user.
     """
-    user = user_crud.get_by_email(db, email=user_in.email)
+    user = user_crud.get_by_filter(db, filter_params={"email": user_in.email})
     if user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -28,20 +30,29 @@ def create_user(
     return user
 
 
-@router.get("/", response_model=List[User], status_code=status.HTTP_200_OK)
+@router.get("/", response_model=Sequence[user_schema], status_code=status.HTTP_200_OK)
 def read_users(
     db: Session = Depends(deps.get_db),
     skip: int = 0,
     limit: int = 100,
-) -> Any:
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    is_superuser: Optional[bool] = Query(
+        None, description="Filter by superuser status"
+    ),
+    email: Optional[str] = Query(None, description="Filter by email"),
+) -> Sequence[user_model]:
     """
-    Retrieve users.
+    Retrieve users with optional filtering.
     """
-    users = user_crud.get_multi(db, skip=skip, limit=limit)
+    filter_params = UserFilterParams(
+        is_active=is_active, is_superuser=is_superuser, email=email
+    ).model_dump(exclude_none=True)
+
+    users = user_crud.get_multi(db, skip=skip, limit=limit, filter_params=filter_params)
     return users
 
 
-@router.get("/{user_id}", response_model=User, status_code=status.HTTP_200_OK)
+@router.get("/{user_id}", response_model=user_schema, status_code=status.HTTP_200_OK)
 def read_user_by_id(
     user_id: int,
     db: Session = Depends(deps.get_db),
@@ -58,7 +69,9 @@ def read_user_by_id(
     return user
 
 
-@router.get("/by-email/{email}", response_model=User, status_code=status.HTTP_200_OK)
+@router.get(
+    "/by-email/{email}", response_model=user_schema, status_code=status.HTTP_200_OK
+)
 def read_user_by_email(
     email: str,
     db: Session = Depends(deps.get_db),
@@ -66,7 +79,7 @@ def read_user_by_email(
     """
     Get a specific user by email.
     """
-    user = user_crud.get_by_email(db, email=email)
+    user = user_crud.get_by_filter(db, filter_params={"email": email})
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -75,7 +88,7 @@ def read_user_by_email(
     return user
 
 
-@router.put("/{user_id}", response_model=User, status_code=status.HTTP_200_OK)
+@router.put("/{user_id}", response_model=user_schema, status_code=status.HTTP_200_OK)
 def update_user(
     *,
     db: Session = Depends(deps.get_db),

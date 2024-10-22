@@ -1,4 +1,4 @@
-from typing import Any, Generic, Optional, Type, TypeVar, Sequence
+from typing import Any, Dict, Generic, Optional, Type, TypeVar, Sequence
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -8,6 +8,7 @@ from app.db.base_class import Base
 ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
+SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
 
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
@@ -23,13 +24,32 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def get(self, db: Session, id: Any) -> Optional[ModelType]:
         return db.query(self.model).filter(self.model.id == id).first()
 
-    def get_by_field(self, db: Session, field: str, value: Any) -> Optional[ModelType]:
-        return db.query(self.model).filter(getattr(self.model, field) == value).first()
+    def get_by_filter(
+        self, db: Session, *, filter_params: Dict[str, Any]
+    ) -> Optional[ModelType]:
+        query = select(self.model)
+        for field, value in filter_params.items():
+            if hasattr(self.model, field):
+                query = query.where(getattr(self.model, field) == value)
+        return db.execute(query).scalar_one_or_none()
 
     def get_multi(
-        self, db: Session, *, skip: int = 0, limit: int = 100
+        self,
+        db: Session,
+        *,
+        skip: int = 0,
+        limit: int = 100,
+        filter_params: Optional[Dict[str, Any]] = None,
     ) -> Sequence[ModelType]:
-        return db.execute(select(self.model).offset(skip).limit(limit)).scalars().all()
+        query = select(self.model)
+
+        if filter_params:
+            for field, value in filter_params.items():
+                if hasattr(self.model, field):
+                    query = query.where(getattr(self.model, field) == value)
+
+        result = db.execute(query.offset(skip).limit(limit))
+        return result.scalars().all()
 
     def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
         create_data = obj_in.model_dump()
