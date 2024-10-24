@@ -14,7 +14,9 @@ from tests.utils.utils import random_email, random_lower_string
 def test_user(db_session: Session) -> Tuple[User, str]:
     email = random_email()
     password = random_lower_string()
-    user_in = UserCreate(email=email, password=password)
+    user_in = UserCreate(
+        email=email, password=password, is_active=True, is_superuser=False
+    )
     user = user_crud.create(db_session, obj_in=user_in)
     return user, password
 
@@ -26,8 +28,8 @@ def test_create_user(db_session: Session) -> None:
     user_in = UserCreate(email=email, password=password)
     user = user_crud.create(db_session, obj_in=user_in)
     assert user.email == email
-    assert hasattr(user, "password")
-    assert user.password != password  # Check that password is hashed
+    assert hasattr(user, "hashed_password")
+    assert user.hashed_password != password  # Check that password is hashed
 
 
 def test_get_user(db_session: Session, test_user: Tuple[User, str]) -> None:
@@ -55,6 +57,18 @@ def test_update_user(db_session: Session, test_user: Tuple[User, str]) -> None:
     assert updated_user.email == new_email
 
 
+def test_update_user_with_password(
+    db_session: Session, test_user: Tuple[User, str]
+) -> None:
+    """Test updating a user's password."""
+    user, old_password = test_user
+    new_password = random_lower_string()
+    user_update = UserUpdate(password=new_password)
+    updated_user = user_crud.update(db_session, db_obj=user, obj_in=user_update)
+    assert updated_user.hashed_password != old_password
+    assert updated_user.hashed_password != new_password  # Should be hashed
+
+
 def test_delete_user(db_session: Session) -> None:
     """Test deleting a user."""
     email = random_email()
@@ -78,6 +92,8 @@ def test_create_user_api(client: TestClient, db_session: Session) -> None:
     user = user_crud.get_by_filter(db_session, filter_params={"email": email})
     assert user
     assert user.email == created_user["email"]
+    assert hasattr(user, "hashed_password")
+    assert user.hashed_password != password  # Check that password is hashed
 
 
 def test_create_user_existing_email(
@@ -126,7 +142,6 @@ def test_get_users_with_filter_params(
     filter_params = UserFilterParams(is_active=True, is_superuser=False).model_dump(
         exclude_none=True
     )
-
     query_params = "&".join(f"{k}={v}" for k, v in filter_params.items())
     response = client.get(f"{settings.API_V1_STR}/users/?{query_params}")
     assert response.status_code == 200

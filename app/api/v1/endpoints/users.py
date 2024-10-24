@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy.orm import Session
-from typing import Any, Sequence, Optional
+from typing import Any, Annotated, cast, Sequence, Optional
 
 from app.crud.user import user as user_crud
-from app.schemas.user import UserCreate, UserUpdate, UserFilterParams
+from app.core.security import verify_password
+from app.schemas.user import UserCreate, UserUpdate, UserFilterParams, UserVerify
 from app.schemas.user import User as user_schema
 from app.models.user import User as user_model
 from app.api import deps
@@ -130,3 +131,35 @@ def delete_user(
         )
     user_crud.remove(db, id=user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/verify", response_model=user_schema)
+def verify_user_credentials(
+    user_in: UserVerify, db: Annotated[Session, Depends(deps.get_db)]
+) -> user_model:
+    """
+    Verify user credentials and return user information if valid.
+    """
+    user = user_crud.get_by_filter(db, filter_params={"email": user_in.email})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+
+    # Cast to proper type to help mypy understand the model type
+    user = cast(user_model, user)
+
+    if not verify_password(user_in.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Inactive user",
+        )
+
+    return user
